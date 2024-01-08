@@ -139,8 +139,6 @@ def fetch_one_comment(id, commentID):
     else:
         return make_response(jsonify({"error": "Article not found"}), 404)
 
-from bson import ObjectId
-
 @app.route("/api/v1.0/articles/<string:id>/comments", methods=["GET"])
 def fetch_all_comments(id):
     try:
@@ -157,8 +155,6 @@ def fetch_all_comments(id):
         return make_response(jsonify(comments), 200)
     else:
         return make_response(jsonify({"error": "Article not found"}), 404)
-
-from bson import ObjectId
 
 @app.route("/api/v1.0/articles/<string:id>/comments/<int:commentID>", methods=["DELETE"])
 def delete_comment(id, commentID):
@@ -179,6 +175,36 @@ def delete_comment(id, commentID):
             # Remove the comment from the article's comments array
             valid_data.update_one({"_id": obj_id}, {"$pull": {"comments": {"id": commentID}}})
             return make_response(jsonify({}), 204)
+        else:
+            return make_response(jsonify({"error": "Comment not found"}), 404)
+    else:
+        return make_response(jsonify({"error": "Article not found"}), 404)
+    
+@app.route("/api/v1.0/articles/<string:id>/comments/<int:commentID>", methods=["PUT"])
+def edit_comment(id, commentID):
+    try:
+        # Convert the id to ObjectId
+        obj_id = ObjectId(id)
+    except:
+        return make_response(jsonify({"error": "Invalid Article ID format"}), 400)
+
+    # Find the article by ObjectId
+    article = valid_data.find_one({"_id": obj_id})
+
+    if article:
+        # Find the comment by commentID
+        comment = next((c for c in article.get("comments", []) if c["id"] == commentID), None)
+
+        if comment:
+            # Update the comment fields
+            comment["username"] = request.form["username"]
+            comment["comment"] = request.form["comment"]
+            comment["stance"] = request.form["stance"]
+
+            # Update the article with the modified comment
+            valid_data.update_one({"_id": obj_id, "comments.id": commentID}, {"$set": {"comments.$": comment}})
+            
+            return make_response(jsonify(comment), 200)
         else:
             return make_response(jsonify({"error": "Comment not found"}), 404)
     else:
