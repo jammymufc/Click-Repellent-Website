@@ -16,6 +16,7 @@ train_data = db.train
 test_data = db.test
 valid_data = db.valid
 blacklist = db.blacklist
+users = db.users
 
 # Define a set of predefined options for the "notes" field
 STANCE_OPTIONS = ["Agree", "Disagree"]
@@ -234,6 +235,30 @@ def edit_comment(id, commentID):
     else:
         return make_response(jsonify({"error": "Article not found"}), 404)
 
+
+@app.route("/api/v1.0/login", methods=["GET"])
+def login():
+    auth = request.authorization
+    if auth:
+        user = users.find_one( { "username" : auth.username } )
+        if user is not None:
+            if bcrypt.checkpw( bytes( auth.password, 'UTF-8' ), user["password"] ):
+                print(f"Provided password: {auth.password}")
+                token = jwt.encode( {
+                    '_id': str(user["_id"]),
+                    'name': user["name"],
+                    'username': user["username"],
+                    'email': user["email"],
+                    'admin': user["admin"],
+                    'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=90)
+                    }, app.config['SECRET_KEY'])
+                return make_response(jsonify( { 'token' : token}), 200 )
+            else:
+                return make_response( jsonify( { 'message' : 'Enter a valid password'} ), 401)
+        else:
+            return make_response( jsonify( { 'message' : 'Enter a valid username'} ), 401)
+    
+    return make_response( jsonify( { 'message' : 'Authentication required' } ), 401 )
 
 if __name__ == "__main__":
     app.run( debug = True )
