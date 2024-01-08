@@ -154,6 +154,17 @@ def add_new_comment(id):
                 {"_id": obj_id},
                 {"$inc": {f"{stance.lower()}_count": 1}}
             )
+        
+        # Update the user's collection with the new comment
+        user_data = users.find_one({"username": username})
+        if user_data:
+            users.update_one(
+                {"username": username},
+                {"$push": {"comments": new_comment}}
+            )
+        else:
+            # If the user doesn't exist
+            return make_response(jsonify({"error": f"User '{username}' not found"}), 404)
 
         return make_response(jsonify(new_comment), 201)
     else:
