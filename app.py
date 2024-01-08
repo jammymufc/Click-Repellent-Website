@@ -419,6 +419,22 @@ def delete_user(id):
         return make_response( jsonify ( {} ), 204 )
     else:
         return make_response( jsonify( { "error" : "Invalid User ID" } ), 404 )
+    
+@app.route("/api/v1.0/users/<string:id>/comments", methods=["GET"])
+def fetch_all_user_comments(id):
+    data_to_return = []
+    user = users.find_one(
+        { "_id" : ObjectId(id) }, { "comments" : 1, "_id" : 0 }
+    )
+    
+    if user and "comments" in user:
+        for comment in user["comments"]:
+            comment["_id"] = str(comment["_id"])
+            data_to_return.append(comment)
+        
+        return make_response( jsonify( data_to_return ), 200 )
+    else:
+        return make_response( jsonify( { "error" : "No comments found" } ), 404)
 
 if __name__ == "__main__":
     app.run( debug = True )
