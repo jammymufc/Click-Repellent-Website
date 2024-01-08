@@ -270,6 +270,14 @@ def login():
     
     return make_response( jsonify( { 'message' : 'Authentication required' } ), 401 )
 
+@app.route("/api/v1.0/logout", methods=['GET'])
+@jwt_required
+def logout():
+    token = request.headers['x-access-token']
+    blacklist.insert_one( { "token" : token } )
+    return make_response( jsonify( { 'message' : 'Logout successful' } ), 200)
+
+
 @app.route("/api/v1.0/createaccount", methods = ["POST"])
 def add_new_user():
     if "name" in request.form and "password" in request.form and "email" in request.form and "username" in request.form:
