@@ -141,9 +141,24 @@ def add_new_comment(id):
             }
         )
 
+        # Initialize counts for each stance in the article if not present
+        for stance in STANCE_OPTIONS:
+            valid_data.update_one(
+                {"_id": obj_id, f"{stance.lower()}_count": {"$exists": False}},
+                {"$set": {f"{stance.lower()}_count": 0}}
+            )
+
+        # Increment the counts for each stance in the article
+        for stance in new_comment["stance"]:
+            valid_data.update_one(
+                {"_id": obj_id},
+                {"$inc": {f"{stance.lower()}_count": 1}}
+            )
+
         return make_response(jsonify(new_comment), 201)
     else:
         return make_response(jsonify({"error": "Article not found"}), 404)
+
 
     
 @app.route("/api/v1.0/articles/<string:id>/comments/<int:commentID>", methods=["GET"])
@@ -188,7 +203,7 @@ def fetch_all_comments(id):
 @app.route("/api/v1.0/articles/<string:id>/comments/<int:commentID>", methods=["DELETE"])
 def delete_comment(id, commentID):
     try:
-        # Convert the article id to ObjectId
+        # Convert the id to ObjectId
         obj_id = ObjectId(id)
     except:
         return make_response(jsonify({"error": "Invalid Article ID format"}), 400)
@@ -197,23 +212,29 @@ def delete_comment(id, commentID):
     article = valid_data.find_one({"_id": obj_id})
 
     if article:
-        # Find the index of the comment to be deleted
-        comment_index = None
-        for i, comment in enumerate(article.get("comments", [])):
-            if comment["id"] == commentID:
-                comment_index = i
-                break
+        # Find the comment by ID
+        comment = next((comment for comment in article.get("comments", []) if comment["id"] == commentID), None)
 
-        if comment_index is not None:
+        if comment:
             # Decrement the comment_count field
             valid_data.update_one({"_id": obj_id}, {"$inc": {"comment_count": -1}})
-            # Remove the comment from the comments array
+
+            # Decrement the counts for each stance in the article
+            for stance in comment["stance"]:
+                valid_data.update_one(
+                    {"_id": obj_id},
+                    {"$inc": {f"{stance.lower()}_count": -1}}
+                )
+
+            # Remove the comment from the comments list
             valid_data.update_one({"_id": obj_id}, {"$pull": {"comments": {"id": commentID}}})
+
             return make_response(jsonify({}), 204)
         else:
             return make_response(jsonify({"error": "Comment not found"}), 404)
     else:
         return make_response(jsonify({"error": "Article not found"}), 404)
+
     
 @app.route("/api/v1.0/articles/<string:id>/comments/<int:commentID>", methods=["PUT"])
 def edit_comment(id, commentID):
