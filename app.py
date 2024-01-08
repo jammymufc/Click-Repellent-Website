@@ -252,10 +252,29 @@ def edit_comment(id, commentID):
         comment = next((c for c in article.get("comments", []) if c["id"] == commentID), None)
 
         if comment:
+            # Decrement counts for the old stances
+            for stance in comment["stance"]:
+                valid_data.update_one(
+                    {"_id": obj_id},
+                    {"$inc": {f"{stance.lower()}_count": -1}}
+                )
+
             # Update the comment fields
             comment["username"] = request.form["username"]
             comment["comment"] = request.form["comment"]
-            comment["stance"] = request.form["stance"]
+            comment["stance"] = request.form.getlist("stance")
+
+            # Validate that the selected stances are from the predefined set
+            for stance in comment["stance"]:
+                if stance not in STANCE_OPTIONS:
+                    return make_response(jsonify({"error": f"Invalid stance: {stance}"}), 400)
+
+            # Increment counts for the new stances
+            for stance in comment["stance"]:
+                valid_data.update_one(
+                    {"_id": obj_id},
+                    {"$inc": {f"{stance.lower()}_count": 1}}
+                )
 
             # Update the article with the modified comment
             valid_data.update_one({"_id": obj_id, "comments.id": commentID}, {"$set": {"comments.$": comment}})
@@ -265,6 +284,7 @@ def edit_comment(id, commentID):
             return make_response(jsonify({"error": "Comment not found"}), 404)
     else:
         return make_response(jsonify({"error": "Article not found"}), 404)
+
 
 
 @app.route("/api/v1.0/login", methods=["GET"])
