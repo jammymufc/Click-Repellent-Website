@@ -17,6 +17,9 @@ test_data = db.test
 valid_data = db.valid
 blacklist = db.blacklist
 
+# Define a set of predefined options for the "notes" field
+STANCE_OPTIONS = ["Agree", "Disagree"]
+
 def jwt_required(func):
     @wraps(func)
     def jwt_required_wrapper(*args, **kwargs):
@@ -106,8 +109,14 @@ def add_new_comment(id):
             "id": new_comment_id,
             "username": request.form["username"],
             "comment": request.form["comment"],
-            "stance": request.form["stance"]
+            "stance": request.form.getlist("stance"),
+            "date": request.form["date"]
         }
+        
+        # Validate that the selected notes are from the predefined set
+        for stance in new_comment["stance"]:
+            if stance not in STANCE_OPTIONS:
+                return make_response(jsonify({"error": f"Invalid stance: {stance}"}), 400)
 
         # Update the article with the new comment
         valid_data.update_one({"_id": obj_id}, {"$push": {"comments": new_comment}})
