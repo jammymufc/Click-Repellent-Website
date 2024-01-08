@@ -21,6 +21,16 @@ users = db.users
 # Define a set of predefined options for the "notes" field
 STANCE_OPTIONS = ["Agree", "Disagree"]
 
+def convert_objectid_to_string(obj):
+    if isinstance(obj, ObjectId):
+        return str(obj)
+    elif isinstance(obj, list):
+        return [convert_objectid_to_string(item) for item in obj]
+    elif isinstance(obj, dict):
+        return {key: convert_objectid_to_string(value) for key, value in obj.items()}
+    else:
+        return obj
+
 def jwt_required(func):
     @wraps(func)
     def jwt_required_wrapper(*args, **kwargs):
@@ -259,6 +269,63 @@ def login():
             return make_response( jsonify( { 'message' : 'Enter a valid username'} ), 401)
     
     return make_response( jsonify( { 'message' : 'Authentication required' } ), 401 )
+
+@app.route("/api/v1.0/createaccount", methods = ["POST"])
+def add_new_user():
+    if "name" in request.form and "password" in request.form and "email" in request.form and "username" in request.form:
+        
+        # Check if the username or email already exists
+        existing_user = users.find_one(
+            {
+                "$or": [
+                    {"username": request.form["username"]},
+                    {"email": request.form["email"]},
+                ]
+            }
+        )
+
+        if existing_user:
+            return make_response(
+                jsonify({"error": "Username or email already exists"}), 409
+            )
+        
+        
+        new_user = {
+            "name" : request.form["name"],
+            "password" : bcrypt.hashpw(request.form["password"].encode('utf8'), bcrypt.gensalt()),
+            "email" : request.form["email"],
+            "username" : request.form["username"],
+            "admin" : False
+        }
+        
+        new_user_id = users.insert_one(new_user)
+        new_user_link = "http://localhost:5000/api/v1.0/users/" + \
+            str(new_user_id.inserted_id)
+        return make_response( jsonify( { "url" : new_user_link } ), 201 )
+    else:
+        return make_response( jsonify ( { "error" : "Missing Form Data" } ), 404 )
+    
+@app.route("/api/v1.0/users", methods=["GET"])
+def fetch_all_users():
+    all_users = list(users.find({}))
+
+    # Convert ObjectId to string for JSON serialization
+    all_users = [convert_objectid_to_string(user) for user in all_users]
+
+    # Convert bytes to string for JSON serialization
+    for user in all_users:
+        # Only decode if password is bytes
+        if 'password' in user and isinstance(user['password'], bytes):
+            try:
+                user['password'] = user['password'].decode('utf-8')
+            except UnicodeDecodeError:
+                # Handle the case where decoding fails
+                user['password'] = "Password decoding error"
+
+    if all_users:
+        return make_response(jsonify(all_users), 200)
+    else:
+        return make_response(jsonify({"message": "No users found"}), 404)
 
 if __name__ == "__main__":
     app.run( debug = True )
