@@ -327,6 +327,33 @@ def fetch_all_users():
     else:
         return make_response(jsonify({"message": "No users found"}), 404)
 
+
+@app.route("/api/v1.0/users/<string:id>", methods=["GET"])
+def fetch_one_user(id):
+    user = users.find_one({"_id": ObjectId(id)})
+
+    if user is not None:
+        # Convert ObjectId to string for serialization
+        user = convert_objectid_to_string(user)
+
+        # Convert Binary field to base64-encoded string
+        #only decode if password is bytes
+        if 'password' in user and isinstance(user['password'], bytes):
+            user['password'] = user['password'].decode('utf-8') if 'password' in user else None
+
+        return make_response(jsonify(user), 200)
+    else:
+        return make_response(jsonify({"error": "Invalid User ID"}), 404)
+    
+@app.route("/api/v1.0/users/<string:id>", methods = ["DELETE"])
+def delete_user(id):
+
+    result = users.delete_one( { "_id" : ObjectId(id) } )
+    if result.deleted_count == 1:
+        return make_response( jsonify ( {} ), 204 )
+    else:
+        return make_response( jsonify( { "error" : "Invalid User ID" } ), 404 )
+
 if __name__ == "__main__":
     app.run( debug = True )
     
