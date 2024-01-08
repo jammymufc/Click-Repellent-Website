@@ -99,13 +99,18 @@ def add_new_comment(id):
     article = valid_data.find_one({"_id": obj_id})
 
     if article:
+        # Check if the user has already commented
+        username = request.form["username"]
+        if any(comment["username"] == username for comment in article.get("comments", [])):
+            return make_response(jsonify({"error": "User has already commented on this article"}), 400)
+
         # Calculate the new comment ID
         new_comment_id = 1 if not article.get("comments") else article["comments"][-1]["id"] + 1
 
         # Create a new comment
         new_comment = {
             "id": new_comment_id,
-            "username": request.form["username"],
+            "username": username,
             "comment": request.form["comment"],
             "stance": request.form.getlist("stance"),
             "date": request.form["date"]
