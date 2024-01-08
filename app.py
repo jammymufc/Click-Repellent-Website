@@ -87,8 +87,6 @@ def show_one_article(id):
     else:
         return make_response( jsonify( { "error" : "Invalid Article ID" } ), 404)
 
-from bson import ObjectId
-
 @app.route("/api/v1.0/articles/<string:id>/comments", methods=["POST"])
 def add_new_comment(id):
     try:
@@ -112,14 +110,20 @@ def add_new_comment(id):
             "stance": request.form.getlist("stance"),
             "date": request.form["date"]
         }
-        
-        # Validate that the selected notes are from the predefined set
+
+        # Validate that the selected stances are from the predefined set
         for stance in new_comment["stance"]:
             if stance not in STANCE_OPTIONS:
                 return make_response(jsonify({"error": f"Invalid stance: {stance}"}), 400)
 
         # Update the article with the new comment
-        valid_data.update_one({"_id": obj_id}, {"$push": {"comments": new_comment}})
+        valid_data.update_one(
+            {"_id": obj_id},
+            {
+                "$push": {"comments": new_comment},
+                "$inc": {"comment_count": 1}  # Increment the comment_count field
+            }
+        )
 
         return make_response(jsonify(new_comment), 201)
     else:
@@ -168,7 +172,7 @@ def fetch_all_comments(id):
 @app.route("/api/v1.0/articles/<string:id>/comments/<int:commentID>", methods=["DELETE"])
 def delete_comment(id, commentID):
     try:
-        # Convert the id to ObjectId
+        # Convert the article id to ObjectId
         obj_id = ObjectId(id)
     except:
         return make_response(jsonify({"error": "Invalid Article ID format"}), 400)
@@ -177,11 +181,17 @@ def delete_comment(id, commentID):
     article = valid_data.find_one({"_id": obj_id})
 
     if article:
-        # Find the comment by commentID
-        comment = next((c for c in article.get("comments", []) if c["id"] == commentID), None)
+        # Find the index of the comment to be deleted
+        comment_index = None
+        for i, comment in enumerate(article.get("comments", [])):
+            if comment["id"] == commentID:
+                comment_index = i
+                break
 
-        if comment:
-            # Remove the comment from the article's comments array
+        if comment_index is not None:
+            # Decrement the comment_count field
+            valid_data.update_one({"_id": obj_id}, {"$inc": {"comment_count": -1}})
+            # Remove the comment from the comments array
             valid_data.update_one({"_id": obj_id}, {"$pull": {"comments": {"id": commentID}}})
             return make_response(jsonify({}), 204)
         else:
