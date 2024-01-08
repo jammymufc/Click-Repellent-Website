@@ -240,6 +240,12 @@ def delete_comment(id, commentID):
             # Remove the comment from the comments list
             valid_data.update_one({"_id": obj_id}, {"$pull": {"comments": {"id": commentID}}})
 
+            # Remove the comment from the user's comments
+            users.update_one(
+                {"username": comment["username"]},
+                {"$pull": {"comments": {"id": commentID}}}
+            )
+
             return make_response(jsonify({}), 204)
         else:
             return make_response(jsonify({"error": "Comment not found"}), 404)
