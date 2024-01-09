@@ -1,17 +1,14 @@
+from flask import Flask, jsonify
 from pymongo import MongoClient
 
-def clear_all_collections(database_name, connection_string="mongodb://127.0.0.1:27017"):
-    client = MongoClient(connection_string)
-    db = client[database_name]
+app = Flask(__name__)
 
-    # Get a list of all collection names in the database
-    collections = db.list_collection_names()
+# Connect to MongoDB
+client = MongoClient('mongodb://localhost:27017/')
+db = client['clickRepellent']  # Replace 'your_database_name' with your actual database name
 
-    # Drop each collection
-    for collection_name in collections:
-        db[collection_name].drop()
 
-    print("All collections dropped from the database.")
-
-# Replace "your_database_name" with the actual name of your database
-clear_all_collections("your_database_name")
+# Drop the speaker_images collection
+db['speaker_images'].drop()
+db['speaker_images.chunks'].drop()
+db['speaker_images.files'].drop()

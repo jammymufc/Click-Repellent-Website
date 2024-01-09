@@ -43,6 +43,9 @@ def insert_images_to_collection(collection, folder_path):
     for filename in os.listdir(folder_path):
         file_path = os.path.join(folder_path, filename)
 
+        # Extract speaker's name from the filename
+        speaker_name = filename.split('_')[0].replace('-', ' ')  # Adjust the split logic based on your filename format
+
         # Open the image file in binary mode
         with open(file_path, 'rb') as f:
             # Insert the image binary data into GridFS
@@ -51,10 +54,12 @@ def insert_images_to_collection(collection, folder_path):
             # Insert metadata along with the file_id into the image collection
             image_collection.insert_one({
                 'filename': filename,
-                'file_id': file_id
+                'file_id': file_id,
+                'speaker_name': speaker_name
             })
 
-    print(f"Images loaded from {folder_path} to {collection}")
+    print(f"Images loaded from {folder_path} to {collection} with speaker names")
+
 
 if __name__ == "__main__":
     # Specify the folder path containing PNG images

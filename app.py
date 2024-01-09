@@ -5,6 +5,10 @@ import jwt
 import datetime
 from functools import wraps
 import bcrypt 
+from gridfs import GridFS
+import io
+from PIL import Image
+import base64
 
 app = Flask(__name__)
 
@@ -17,6 +21,11 @@ test_data = db.test
 valid_data = db.valid
 blacklist = db.blacklist
 users = db.users
+speaker_images_collection = db.speaker_images
+print("Number of documents in speaker_images collection:", speaker_images_collection.count_documents({}))
+
+# Initialize GridFS
+fs = GridFS(db, collection="speaker_images")
 
 # Define a set of predefined options for the "notes" field
 STANCE_OPTIONS = ["Agree", "Disagree"]
@@ -505,6 +514,51 @@ def fetch_all_read_articles(id):
         return make_response( jsonify( data_to_return ), 200 )
     else:
         return make_response( jsonify( { "error" : "No read articles found" } ), 404)
+    
+@app.route("/api/v1.0/speakercharts", methods=["GET"])
+def fetch_all_speaker_images():
+    data_to_return = []
+
+    # Retrieve page and limit from query parameters, default to 1 and 2 if not provided
+    page = int(request.args.get('page', 1))
+    limit = int(request.args.get('limit', 2))
+
+    # Calculate the skip value based on the page and limit
+    skip = (page - 1) * limit
+
+    # Retrieve documents from the speaker_images collection with pagination
+    all_documents = list(db.speaker_images.find().skip(skip).limit(limit))
+
+    if all_documents:
+        for document in all_documents:
+            # Retrieve the file_id from the document
+            file_id = document['file_id']
+            print(f"Attempting to retrieve image with file_id: {file_id}")
+
+            try:
+                # Retrieve the image binary data from GridFS
+                image_data = fs.get(file_id).read()
+                print("Image retrieved successfully.")
+                
+                # Convert binary data to an image
+                image = Image.open(io.BytesIO(image_data))
+                
+                # Convert image to base64
+                base64_image = base64.b64encode(image_data).decode('utf-8')
+
+                # Append the image details to the response data
+                data_to_return.append({
+                    'filename': document['filename'],
+                    #'base64_image': base64_image,
+                    'speaker_name' : document['speaker_name']
+                })
+            except Exception as e:
+                # Handle any exceptions during image retrieval
+                print(f"Error retrieving image: {e}")
+
+        return make_response(jsonify(data_to_return), 200)
+    else:
+        return make_response(jsonify({"error": "No speaker charts found"}), 404)
     
 
 if __name__ == "__main__":
