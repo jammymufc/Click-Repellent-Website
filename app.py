@@ -9,6 +9,7 @@ from gridfs import GridFS
 import io
 from PIL import Image
 import base64
+from bson.json_util import dumps, loads
 
 app = Flask(__name__)
 
@@ -23,6 +24,7 @@ blacklist = db.blacklist
 users = db.users
 speaker_images_collection = db.speaker_images
 print("Number of documents in speaker_images collection:", speaker_images_collection.count_documents({}))
+speakers = db.speakers
 
 # Initialize GridFS
 fs = GridFS(db, collection="speaker_images")
@@ -598,6 +600,29 @@ def fetch_one_speaker_image(id):
             return make_response(jsonify({"error": "Error retrieving image"}), 500)
     else:
         return make_response(jsonify({"error": "Image not found"}), 404)
+
+
+@app.route("/api/v1.0/speakers", methods=["GET"])
+def fetch_all_speakers():
+    page_num, page_size = 1, 5
+    if request.args.get("pn"):
+        page_num = int(request.args.get('pn'))
+    if request.args.get("ps"):
+        page_size = int(request.args.get('ps'))
+    page_start = (page_size * (page_num - 1))
+
+    # Fetch speakers from the database
+    all_speakers = list(speakers.find({}).skip(page_start).limit(page_size))
+
+    # Convert ObjectId to string for JSON serialization
+    all_speakers = [convert_objectid_to_string(speaker) for speaker in all_speakers]
+
+    if all_speakers:
+        return make_response(jsonify(all_speakers), 200)
+    else:
+        return make_response(jsonify({"message": "No speakers found"}), 404)
+
+
 
 if __name__ == "__main__":
     app.run( debug = True )
