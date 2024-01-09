@@ -490,6 +490,23 @@ def delete_read_article(user_id, article_id):
 
     return make_response(jsonify({"message": "Article deleted from read list"}), 204)
 
+@app.route("/api/v1.0/users/<string:id>/read", methods=["GET"])
+def fetch_all_read_articles(id):
+    data_to_return = []
+    user = users.find_one(
+        { "_id" : ObjectId(id) }, { "read_articles" : 1, "_id" : 0 }
+    )
+    
+    if user and "read_articles" in user:
+        for read in user["read_articles"]:
+            read["_id"] = str(read["_id"])
+            data_to_return.append(read)
+        
+        return make_response( jsonify( data_to_return ), 200 )
+    else:
+        return make_response( jsonify( { "error" : "No read articles found" } ), 404)
+    
+
 if __name__ == "__main__":
     app.run( debug = True )
     
