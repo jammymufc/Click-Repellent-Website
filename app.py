@@ -602,4 +602,3 @@ def fetch_one_speaker_image(id):
 if __name__ == "__main__":
     app.run( debug = True )
     
-    
