@@ -155,16 +155,6 @@ def add_new_comment(id):
                 {"$inc": {f"{stance.lower()}_count": 1}}
             )
         
-        # Update the user's collection with the new comment
-        user_data = users.find_one({"username": username})
-        if user_data:
-            users.update_one(
-                {"username": username},
-                {"$push": {"comments": new_comment}}
-            )
-        else:
-            # If the user doesn't exist
-            return make_response(jsonify({"error": f"User '{username}' not found"}), 404)
 
         return make_response(jsonify(new_comment), 201)
     else:
@@ -435,6 +425,70 @@ def fetch_all_user_comments(id):
         return make_response( jsonify( data_to_return ), 200 )
     else:
         return make_response( jsonify( { "error" : "No comments found" } ), 404)
+    
+    
+@app.route("/api/v1.0/users/<string:id>/articles/<string:article_id>/read", methods=["POST"])
+def add_to_read(id, article_id):
+    
+    # Check if the user ID and article ID are valid
+    if not ObjectId.is_valid(id) or not ObjectId.is_valid(article_id):
+        return make_response(jsonify({"error": "Invalid user or article ID"}), 400)
+    
+    article = valid_data.find_one({"_id": ObjectId(article_id)})
+    user = users.find_one({"_id": ObjectId(id)})
+    
+    new_read = {
+        "_id": ObjectId(article_id),
+        "article_name": article['statement'],
+        "label": article['label'],
+        "date_added": datetime.datetime.utcnow()
+    }
+    
+    existing_read_article = next((r for r in user.get("read_articles", []) if r.get("_id") == new_read["_id"]), None)
+    
+    if existing_read_article:
+        # If the article exists, don't add
+        return make_response(jsonify({"error": "Article has already been read."}), 401)
+    else:
+        users.update_one(
+            {"_id": ObjectId(id)},
+            {
+                "$push": {"read_articles": new_read}
+            }
+        )
+        
+        valid_data.update_one(
+            {"_id": ObjectId(article_id)},
+            {
+                "$inc": {"read_count": 1}
+            }
+        )
+        
+        new_read_link = "http://localhost:5000/api/v1.0/users/" + id + \
+            "/read/" + str(article_id)
+        return make_response(jsonify({"url": new_read_link}), 201)
+
+
+@app.route("/api/v1.0/users/<string:user_id>/read/<string:article_id>", methods=["DELETE"])
+def delete_read_article(user_id, article_id):
+    user = users.find_one({"_id": ObjectId(user_id)})
+
+    if user is None:
+        return make_response(jsonify({"error": "Invalid User ID"}), 404)
+
+    # Check if the article is in the user's "read_articles" list
+    article_to_delete = next((entry for entry in user.get("read_articles", []) if str(entry.get("_id")) == article_id), None)
+
+    if article_to_delete is None:
+        return make_response(jsonify({"error": "Article not found in tried list"}), 404)
+
+    # Delete the beer entry from the user's "tried_and_tested" list
+    users.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$pull": {"read_articles": {"_id": article_to_delete["_id"]}}}
+    )
+
+    return make_response(jsonify({"message": "Article deleted from read list"}), 204)
 
 if __name__ == "__main__":
     app.run( debug = True )
