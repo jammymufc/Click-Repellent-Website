@@ -548,9 +548,10 @@ def fetch_all_speaker_images():
 
                 # Append the image details to the response data
                 data_to_return.append({
+                    '_id': str(document['_id']),  # Convert ObjectId to string
                     'filename': document['filename'],
-                    #'base64_image': base64_image,
-                    'speaker_name' : document['speaker_name']
+                    'speaker_name': document['speaker_name'],
+                    # 'base64_image': base64_image,
                 })
             except Exception as e:
                 # Handle any exceptions during image retrieval
@@ -560,6 +561,43 @@ def fetch_all_speaker_images():
     else:
         return make_response(jsonify({"error": "No speaker charts found"}), 404)
     
+
+@app.route("/api/v1.0/speakercharts/<string:id>", methods=["GET"])
+def fetch_one_speaker_image(id):
+    # Retrieve the document from the speaker_images collection by ID
+    document = db.speaker_images.find_one({'_id': ObjectId(id)})
+
+    if document:
+        # Retrieve the file_id from the document
+        file_id = document['file_id']
+        print(f"Attempting to retrieve image with file_id: {file_id}")
+
+        try:
+            # Retrieve the image binary data from GridFS
+            image_data = fs.get(file_id).read()
+            print("Image retrieved successfully.")
+
+            # Convert binary data to an image
+            image = Image.open(io.BytesIO(image_data))
+
+            # Convert image to base64
+            base64_image = base64.b64encode(image_data).decode('utf-8')
+
+            # Prepare the response data for a single image
+            data_to_return = {
+                '_id': str(document['_id']),  # Convert ObjectId to string
+                'filename': document['filename'],
+                'speaker_name': document['speaker_name'],
+                # 'base64_image': base64_image,
+            }
+
+            return make_response(jsonify(data_to_return), 200)
+        except Exception as e:
+            # Handle any exceptions during image retrieval
+            print(f"Error retrieving image: {e}")
+            return make_response(jsonify({"error": "Error retrieving image"}), 500)
+    else:
+        return make_response(jsonify({"error": "Image not found"}), 404)
 
 if __name__ == "__main__":
     app.run( debug = True )
