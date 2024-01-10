@@ -25,9 +25,12 @@ users = db.users
 speaker_images_collection = db.speaker_images
 print("Number of documents in speaker_images collection:", speaker_images_collection.count_documents({}))
 speakers = db.speakers
+subject_images_collection = db.subject_images
 
 # Initialize GridFS
 fs = GridFS(db, collection="speaker_images")
+# Initialize GridFS
+sfs = GridFS(db, collection="subject_images")
 
 # Define a set of predefined options for the "notes" field
 STANCE_OPTIONS = ["Agree", "Disagree"]
@@ -634,6 +637,54 @@ def fetch_one_speaker(id):
         return make_response(jsonify(speaker), 200)
     else:
         return make_response(jsonify({"error": "Invalid Speaker ID"}), 404)
+
+@app.route("/api/v1.0/subjectcharts", methods=["GET"])
+def fetch_all_subject_images():
+    data_to_return = []
+
+    # Retrieve page and limit from query parameters, default to 1 and 2 if not provided
+    page = int(request.args.get('page', 1))
+    limit = int(request.args.get('limit', 2))
+
+    # Calculate the skip value based on the page and limit
+    skip = (page - 1) * limit
+
+    # Retrieve documents from the subject_images collection with pagination
+    all_documents = list(db.subject_images.find().skip(skip).limit(limit))
+
+    print(f"Number of documents retrieved: {len(all_documents)}")
+
+    if all_documents:
+        for document in all_documents:
+            # Retrieve the file_id from the document
+            file_id = document['file_id']
+            print(f"Attempting to retrieve image with file_id: {file_id}")
+
+            try:
+                # Retrieve the image binary data from GridFS
+                image_data = sfs.get(file_id).read()
+                print("Image retrieved successfully.")
+                
+                # Convert binary data to an image
+                image = Image.open(io.BytesIO(image_data))
+                
+                # Convert image to base64
+                base64_image = base64.b64encode(image_data).decode('utf-8')
+
+                # Append the image details to the response data
+                data_to_return.append({
+                    '_id': str(document['_id']),  # Convert ObjectId to string
+                    'filename': document['filename'],
+                    'subject_name': document['subject_name'],
+                    # 'base64_image': base64_image,
+                })
+            except Exception as e:
+                # Handle any exceptions during image retrieval
+                print(f"Error retrieving image: {e}")
+
+        return make_response(jsonify(data_to_return), 200)
+    else:
+        return make_response(jsonify({"error": "No subject charts found"}), 404)
 
 
 if __name__ == "__main__":
