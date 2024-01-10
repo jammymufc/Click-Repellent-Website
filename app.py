@@ -676,7 +676,7 @@ def fetch_all_subject_images():
                     '_id': str(document['_id']),  # Convert ObjectId to string
                     'filename': document['filename'],
                     'subject_name': document['subject_name'],
-                    # 'base64_image': base64_image,
+                    #'base64_image': base64_image,
                 })
             except Exception as e:
                 # Handle any exceptions during image retrieval
