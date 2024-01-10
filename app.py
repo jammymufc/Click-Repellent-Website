@@ -623,6 +623,18 @@ def fetch_all_speakers():
         return make_response(jsonify({"message": "No speakers found"}), 404)
 
 
+@app.route("/api/v1.0/speakers/<string:id>", methods=["GET"])
+def fetch_one_speaker(id):
+    speaker = speakers.find_one({"_id": ObjectId(id)})
+
+    if speaker is not None:
+        # Convert ObjectId to string for serialization
+        speaker = convert_objectid_to_string(speaker)
+        
+        return make_response(jsonify(speaker), 200)
+    else:
+        return make_response(jsonify({"error": "Invalid Speaker ID"}), 404)
+
 
 if __name__ == "__main__":
     app.run( debug = True )
