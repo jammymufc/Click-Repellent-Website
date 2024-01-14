@@ -723,6 +723,14 @@ def fetch_one_subject_image(id):
     else:
         return make_response(jsonify({"error": "Image not found"}), 404)
 
+@app.route("/api/v1.0/articles/<string:id>", methods = ["DELETE"])
+def delete_article(id):
+    result = valid_data.delete_one( { "_id" : ObjectId(id) } )
+    if result.deleted_count == 1:
+        return make_response( jsonify ( {} ), 204 )
+    else:
+        return make_response( jsonify( { "error" : "Invalid Article ID" } ), 404 )
+
 
 if __name__ == "__main__":
     app.run( debug = True )
