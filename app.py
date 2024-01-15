@@ -781,6 +781,22 @@ def delete_scraped_article(user_id, scraped_id):
 
     return make_response(jsonify({"message": "Beer deleted from tried list"}), 204)
 
+@app.route("/api/v1.0/users/<string:id>/scraped", methods=["GET"])
+def fetch_all_scraped_articles(id):
+    data_to_return = []
+    user = users.find_one(
+        { "_id" : ObjectId(id) }, { "scraped_articles" : 1, "_id" : 0 }
+    )
+    
+    if user and "scraped_articles" in user:
+        for scraped in user["scraped_articles"]:
+            scraped["_id"] = str(scraped["_id"])
+            data_to_return.append(scraped)
+        
+        return make_response( jsonify( data_to_return ), 200 )
+    else:
+        return make_response( jsonify( { "error" : "No tried beers found" } ), 404)
+
 if __name__ == "__main__":
     app.run( debug = True )
     
