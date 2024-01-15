@@ -4,11 +4,26 @@ import json
 from pymongo import MongoClient
 from bson import ObjectId
 import unicodedata
+from bson import ObjectId
 
-def is_article_in_db(collection, statement_text):
-    # Check if the article with the given statement text is already in the database
-    existing_article = collection.find_one({"statement": statement_text})
-    return existing_article is not None
+def is_article_in_db(collection, user_id, url):
+    try:
+        # Convert user_id to ObjectId
+        user_id = ObjectId(user_id)
+    except Exception as e:
+        return False  # If conversion fails, return False
+
+    # Check if the user with the given ID exists in the database
+    user = collection.find_one({"_id": user_id})
+
+    if user:
+        # Check if the URL exists in the scraped_articles array
+        scraped_articles = user.get("scraped_articles", [])
+        for article in scraped_articles:
+            if article.get("url") == url:
+                return True
+
+    return False
 
 def extract_context(soup):
     # Find the context element
@@ -146,7 +161,8 @@ def extract_information(url, people_details):
                         "speaker": speaker,
                         "party_affiliation": party_affiliation,
                         "state_info": text_states,
-                        "context": context
+                        "context": context,
+                        "url": url
                     }
 
                     return extracted_info
@@ -164,7 +180,7 @@ def extract_information(url, people_details):
 with open('new_people_details.json', 'r') as json_file:
     people_details = json.load(json_file)
 
-# Example usage:
+""" # Example usage:
 url_to_scrape = "https://www.politifact.com/factchecks/2024/jan/12/donald-trump/trumps-claim-that-millions-of-immigrants-are-signi/"
 result = extract_information(url_to_scrape, people_details)
 
@@ -188,4 +204,4 @@ if result:
             collection.insert_one(result)
             print("Record added successfully.")
         else:
-            print("Failed to extract information.")
+            print("Failed to extract information.") """

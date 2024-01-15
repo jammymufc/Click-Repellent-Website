@@ -7,8 +7,8 @@ users_collection = db.users
 article_collection = db.valid
 
 # Specify user and comment ObjectId values
-user_id = ObjectId("659c0f687030e18f51d442a8")
-comment_id = ObjectId("659c37705d7a5bb4518de3e8")
+user_id = ObjectId("659c1f069a8e1d3106645775")
+comment_id = ObjectId("65a5423765002577a81e3e92")
 
 # Update the user document to remove the specific comment
 """ users_collection.update_one(
@@ -16,9 +16,11 @@ comment_id = ObjectId("659c37705d7a5bb4518de3e8")
     {'$pull': {'comments': {'id': comment_id}}}
 ) """
 
-article_collection.update_one(
+users_collection.update_one(
     {'_id': user_id},
-    {'$pull': {'comments': {'id': comment_id}}}
+    {'$pull': {'scraped_articles': {'_id': comment_id}}}
+    
 )
+
 
 

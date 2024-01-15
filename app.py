@@ -29,6 +29,7 @@ print("Number of documents in speaker_images collection:", speaker_images_collec
 speakers = db.speakers
 subject_images_collection = db.subject_images
 
+
 # Initialize GridFS
 fs = GridFS(db, collection="speaker_images")
 # Initialize GridFS
@@ -732,7 +733,11 @@ def delete_article(id):
         return make_response( jsonify ( {} ), 204 )
     else:
         return make_response( jsonify( { "error" : "Invalid Article ID" } ), 404 )
-
+    
+def normalize_url(url):
+    # Implement URL normalization logic here
+    # For example, you might want to remove trailing slashes or convert to lowercase
+    return url.strip().lower()
 
 @app.route("/api/v1.0/users/<string:user_id>/scraped/<path:article_url>", methods=["POST"])
 def scrape_and_store_article(user_id, article_url):
@@ -744,20 +749,37 @@ def scrape_and_store_article(user_id, article_url):
     result = scraper.extract_information(article_url, people_details)
 
     if result:
+        print(article_url)
         # Check if the article is already in the database
-        if scraper.is_article_in_db(valid_data, result["statement"]):
-            return make_response(jsonify({"message": "Article already exists in the database. Skipping extraction."}), 400)
+        if scraper.is_article_in_db(users, user_id, article_url):
+            return make_response(jsonify({"message": f"Article with URL '{article_url}' already exists in the database. Skipping extraction."}), 400)
         else:
-            # Insert the extracted information into the MongoDB collection
-            result = scraper.extract_information(article_url, people_details)
-
-            if result:
-                valid_data.insert_one(result)
-                return make_response(jsonify({"message": "Record added successfully."}), 200)
-            else:
-                return make_response(jsonify({"error": "Failed to extract information."}), 500)
+            # Move the result check inside the else block
+            users.update_one({"_id": ObjectId(user_id)}, {"$push": {"scraped_articles": result}})
+            return make_response(jsonify({"message": "Article scraped successfully."}), 200)
     else:
         return make_response(jsonify({"error": "Failed to retrieve content from the provided URL."}), 400)
+
+@app.route("/api/v1.0/users/<string:user_id>/scraped/<string:scraped_id>", methods=["DELETE"])
+def delete_scraped_article(user_id, scraped_id):
+    user = users.find_one({"_id": ObjectId(user_id)})
+
+    if user is None:
+        return make_response(jsonify({"error": "Invalid User ID"}), 404)
+
+    # Check if the article is in the user's "scraped_articles" list
+    article_to_delete = next((entry for entry in user.get("scraped_articles", []) if str(entry["_id"]) == scraped_id), None)
+
+    if article_to_delete is None:
+        return make_response(jsonify({"error": "Article not found in scraped list"}), 404)
+
+    # Delete the article entry from the user's "scraped_articles" list
+    users.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$pull": {"scraped_articles": {"_id": article_to_delete["_id"]}}}
+    )
+
+    return make_response(jsonify({"message": "Beer deleted from tried list"}), 204)
 
 if __name__ == "__main__":
     app.run( debug = True )
