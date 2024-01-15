@@ -10,6 +10,8 @@ import io
 from PIL import Image
 import base64
 from bson.json_util import dumps, loads
+import scraper
+import json
 
 app = Flask(__name__)
 
@@ -731,6 +733,31 @@ def delete_article(id):
     else:
         return make_response( jsonify( { "error" : "Invalid Article ID" } ), 404 )
 
+
+@app.route("/api/v1.0/users/<string:user_id>/scraped/<path:article_url>", methods=["POST"])
+def scrape_and_store_article(user_id, article_url):
+    # Load the JSON data from new_people_details.json
+    with open('new_people_details.json', 'r') as json_file:
+        people_details = json.load(json_file)
+
+    # Example usage:
+    result = scraper.extract_information(article_url, people_details)
+
+    if result:
+        # Check if the article is already in the database
+        if scraper.is_article_in_db(valid_data, result["statement"]):
+            return make_response(jsonify({"message": "Article already exists in the database. Skipping extraction."}), 400)
+        else:
+            # Insert the extracted information into the MongoDB collection
+            result = scraper.extract_information(article_url, people_details)
+
+            if result:
+                valid_data.insert_one(result)
+                return make_response(jsonify({"message": "Record added successfully."}), 200)
+            else:
+                return make_response(jsonify({"error": "Failed to extract information."}), 500)
+    else:
+        return make_response(jsonify({"error": "Failed to retrieve content from the provided URL."}), 400)
 
 if __name__ == "__main__":
     app.run( debug = True )
