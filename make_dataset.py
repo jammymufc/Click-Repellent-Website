@@ -107,6 +107,17 @@ def add_speakers_collection():
         })
 
     print("Speakers collection updated with speaker data")
+    
+def create_political_figures():
+    client = MongoClient("mongodb://127.0.0.1:27017")
+    db = client.clickRepellent
+
+    # Load valid data
+    political_figures = db.political_figures   
+    with open('new_people_details_w_images.json', 'r', encoding='utf-8') as f:
+        data = json.load(f)
+        political_figures.insert_many(data)
+    print("Political Figures loaded")
 
 
 #if __name__ == "__main__":
@@ -158,8 +169,9 @@ if __name__ == "__main__":
     # Specify the name of the collection to store images
     images_collection_name = 'subject_images'
 
-    insert_subjectcharts_to_collection(images_collection_name, images_folder_path)
+    #insert_subjectcharts_to_collection(images_collection_name, images_folder_path)
 
 #create_database()
 #insert_images_to_collection()
 #add_speakers_collection()
+create_political_figures()

@@ -12,8 +12,10 @@ import base64
 from bson.json_util import dumps, loads
 import scraper
 import json
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
 app.config['SECRET_KEY'] = 'mysecret'
 
@@ -28,6 +30,7 @@ speaker_images_collection = db.speaker_images
 print("Number of documents in speaker_images collection:", speaker_images_collection.count_documents({}))
 speakers = db.speakers
 subject_images_collection = db.subject_images
+figures = db.political_figures
 
 
 # Initialize GridFS
@@ -618,7 +621,7 @@ def fetch_all_speakers():
     page_start = (page_size * (page_num - 1))
 
     # Fetch speakers from the database
-    all_speakers = list(speakers.find({}).skip(page_start).limit(page_size))
+    all_speakers = list(figures.find({}).skip(page_start).limit(page_size))
 
     # Convert ObjectId to string for JSON serialization
     all_speakers = [convert_objectid_to_string(speaker) for speaker in all_speakers]
@@ -631,7 +634,7 @@ def fetch_all_speakers():
 
 @app.route("/api/v1.0/speakers/<string:id>", methods=["GET"])
 def fetch_one_speaker(id):
-    speaker = speakers.find_one({"_id": ObjectId(id)})
+    speaker = figures.find_one({"_id": ObjectId(id)})
 
     if speaker is not None:
         # Convert ObjectId to string for serialization
@@ -795,7 +798,7 @@ def fetch_all_scraped_articles(id):
         
         return make_response( jsonify( data_to_return ), 200 )
     else:
-        return make_response( jsonify( { "error" : "No tried beers found" } ), 404)
+        return make_response( jsonify( { "error" : "No scraped articles found" } ), 404)
 
 if __name__ == "__main__":
     app.run( debug = True )
