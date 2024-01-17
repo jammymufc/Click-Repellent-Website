@@ -800,6 +800,22 @@ def fetch_all_scraped_articles(id):
     else:
         return make_response( jsonify( { "error" : "No scraped articles found" } ), 404)
 
+
+@app.route("/api/v1.0/speakers/search", methods=["GET"])
+def search_figure_by_name():
+    # Get the figure name from the query parameters
+    figure_name = request.args.get("name")
+
+    # Perform a case-insensitive search for the figure by name
+    figure = figures.find_one({"name": {"$regex": f"^{figure_name}$", "$options": "i"}})
+
+    if figure:
+        # Convert ObjectId to string
+        figure['_id'] = str(figure['_id'])
+        return jsonify(figure), 200
+    else:
+        return make_response(jsonify({"error": "Figure not found"}), 404)
+
 if __name__ == "__main__":
     app.run( debug = True )
     
