@@ -29,14 +29,14 @@ users = db.users
 speaker_images_collection = db.speaker_images
 print("Number of documents in speaker_images collection:", speaker_images_collection.count_documents({}))
 speakers = db.speakers
-subject_images_collection = db.subject_images
+subject_charts = db.subject_charts
 figures = db.political_figures
 
 
 # Initialize GridFS
 fs = GridFS(db, collection="speaker_images")
 # Initialize GridFS
-sfs = GridFS(db, collection="subject_images")
+sfs = GridFS(db, collection="subject_charts")
 
 # Define a set of predefined options for the "notes" field
 STANCE_OPTIONS = ["Agree", "Disagree"]
@@ -650,13 +650,13 @@ def fetch_all_subject_images():
 
     # Retrieve page and limit from query parameters, default to 1 and 2 if not provided
     page = int(request.args.get('page', 1))
-    limit = int(request.args.get('limit', 2))
+    limit = int(request.args.get('limit', 12))
 
     # Calculate the skip value based on the page and limit
     skip = (page - 1) * limit
 
     # Retrieve documents from the subject_images collection with pagination
-    all_documents = list(db.subject_images.find().skip(skip).limit(limit))
+    all_documents = list(db.subject_charts.find().skip(skip).limit(limit))
 
     print(f"Number of documents retrieved: {len(all_documents)}")
 
@@ -676,6 +676,8 @@ def fetch_all_subject_images():
                 
                 # Convert image to base64
                 base64_image = base64.b64encode(image_data).decode('utf-8')
+                
+                image_url = f"{document['image_url']}"
 
                 # Append the image details to the response data
                 data_to_return.append({
@@ -683,6 +685,7 @@ def fetch_all_subject_images():
                     'filename': document['filename'],
                     'subject_name': document['subject_name'],
                     #'base64_image': base64_image,
+                    'url': image_url, 
                 })
             except Exception as e:
                 # Handle any exceptions during image retrieval
@@ -695,7 +698,7 @@ def fetch_all_subject_images():
 @app.route("/api/v1.0/subjectcharts/<string:id>", methods=["GET"])
 def fetch_one_subject_image(id):
     # Retrieve the document from the speaker_images collection by ID
-    document = db.subject_images.find_one({'_id': ObjectId(id)})
+    document = db.subject_charts.find_one({'_id': ObjectId(id)})
 
     if document:
         # Retrieve the file_id from the document
@@ -712,6 +715,9 @@ def fetch_one_subject_image(id):
 
             # Convert image to base64
             base64_image = base64.b64encode(image_data).decode('utf-8')
+            
+            base_url = "http://localhost:4200/subjectcharts/"  # Replace with your Angular app's base URL
+            image_url = f"{base_url}{document['filename']}"
 
             # Prepare the response data for a single image
             data_to_return = {
@@ -719,6 +725,7 @@ def fetch_one_subject_image(id):
                 'filename': document['filename'],
                 'subject_name': document['subject_name'],
                 # 'base64_image': base64_image,
+                'url': image_url, 
             }
 
             return make_response(jsonify(data_to_return), 200)

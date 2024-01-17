@@ -153,25 +153,29 @@ def insert_subjectcharts_to_collection(collection, folder_path):
             # Insert the image binary data into GridFS
             file_id = fs.put(f.read(), filename=filename)
 
-            # Insert metadata along with the file_id into the image collection
+            # Construct the URL for the image
+            image_url = f"/assets/subject_charts/{filename}"
+
+            # Insert metadata along with the file_id and image_url into the image collection
             image_collection.insert_one({
                 'filename': filename,
                 'file_id': file_id,
-                'subject_name': subject_name
+                'subject_name': subject_name,
+                'image_url': image_url
             })
 
-    print(f"Images loaded from {folder_path} to {collection} with speaker names")
+    print(f"Images loaded from {folder_path} to {collection} with speaker names and URLs")
 
 if __name__ == "__main__":
     # Specify the folder path containing PNG images
     images_folder_path = 'C:\\Users\\USER\\Documents\\YEAR 4 UNI\\Computing Project\\Click Repellent Website\\Subject_charts'
 
     # Specify the name of the collection to store images
-    images_collection_name = 'subject_images'
+    images_collection_name = 'subject_charts'
 
-    #insert_subjectcharts_to_collection(images_collection_name, images_folder_path)
+    insert_subjectcharts_to_collection("subject_charts", "C:\\Users\\USER\\Documents\\YEAR 4 UNI\\Computing Project\\Click Repellent Back-End\\Subject_charts")
 
 #create_database()
 #insert_images_to_collection()
 #add_speakers_collection()
-create_political_figures()
+#create_political_figures()

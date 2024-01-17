@@ -9,7 +9,7 @@ db = client['clickRepellent']  # Replace 'your_database_name' with your actual d
 
 
 # Drop the speaker_images collection
-#db['speaker_images'].drop()
-#db['speaker_images.chunks'].drop()
-#db['speaker_images.files'].drop()
-db['speakers'].drop()
+db['subject_charts'].drop()
+db['subject_charts.chunks'].drop()
+db['subject_charts.files'].drop()
+#db['speakers'].drop()
