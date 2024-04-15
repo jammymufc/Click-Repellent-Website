@@ -165,6 +165,34 @@ def insert_subjectcharts_to_collection(collection, folder_path):
             })
 
     print(f"Images loaded from {folder_path} to {collection} with speaker names and URLs")
+    
+def extract_politifact_speaker_statements():
+    # Connect to MongoDB
+    client = MongoClient("mongodb://127.0.0.1:27017")
+    db = client.clickRepellent
+
+    # Load the JSON file containing political figures and their statements
+    with open('new_people_details_w_images.json', 'r', encoding='utf-8') as f:
+        data = json.load(f)
+
+        # Iterate through each political figure
+        for figure in data:
+            # Extract relevant information
+            name = figure.get('name')
+            party_affiliation = figure.get('party_affiliation')
+            statements = figure.get('statements')
+            image_url = figure.get('statements', {}).get('images', [])[0].get('url', '')
+
+            # Insert the data into the politifact_articles collection
+            db.politifact_articles.insert_one({
+                'name': name,
+                'party_affiliation': party_affiliation,
+                'statements': statements,
+                'image_url': image_url
+            })
+
+    print("Politifact speaker statements and image URLs extracted and inserted into MongoDB")
+    
 
 if __name__ == "__main__":
     # Specify the folder path containing PNG images
@@ -179,3 +207,4 @@ if __name__ == "__main__":
 #insert_images_to_collection()
 #add_speakers_collection()
 #create_political_figures()
+#extract_politifact_speaker_statements()

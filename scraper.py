@@ -180,8 +180,8 @@ def extract_information(url, people_details):
 with open('new_people_details.json', 'r') as json_file:
     people_details = json.load(json_file)
 
-""" # Example usage:
-url_to_scrape = "https://www.politifact.com/factchecks/2024/jan/12/donald-trump/trumps-claim-that-millions-of-immigrants-are-signi/"
+# Example usage:
+url_to_scrape = "https://www.politifact.com/factchecks/2024/apr/10/donald-trump/donald-trump-exaggerates-venezuelan-crime-drop-and/"
 result = extract_information(url_to_scrape, people_details)
 
 if result:
@@ -193,7 +193,7 @@ if result:
     collection = db["valid"]
 
     # Check if the article is already in the database
-    if is_article_in_db(collection, result["statement"]):
+    if is_article_in_db(collection, result["statement"], url_to_scrape):
         print("Article already exists in the database. Skipping extraction.")
     else:
         # Extract information only if the article is not in the database
@@ -204,4 +204,4 @@ if result:
             collection.insert_one(result)
             print("Record added successfully.")
         else:
-            print("Failed to extract information.") """
+            print("Failed to extract information.")
