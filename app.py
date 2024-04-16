@@ -861,6 +861,8 @@ def ask_question():
     username = request_data.get('username')
 
     if user_input.lower() == 'exit':
+        # If the user sends 'exit', remove the thread ID from the user document
+        users.update_one({'username': username}, {'$unset': {'thread': ""}})
         return jsonify({'response': 'Conversation ended.'}), 200
 
     # Retrieve user data from the users collection
@@ -928,6 +930,7 @@ def create_thread_for_user(username):
 def is_valid_thread(thread_id):
     # Check if the thread ID is a non-empty string
     return isinstance(thread_id, str) and len(thread_id) > 0
+
 
 if __name__ == "__main__":
     app.run( debug = True )
