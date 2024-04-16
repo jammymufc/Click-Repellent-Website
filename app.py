@@ -13,6 +13,8 @@ from bson.json_util import dumps, loads
 import scraper
 import json
 from flask_cors import CORS
+import time
+from openai import OpenAI
 
 app = Flask(__name__)
 CORS(app)
@@ -20,6 +22,7 @@ CORS(app)
 app.config['SECRET_KEY'] = 'mysecret'
 
 client = MongoClient( "mongodb://127.0.0.1:27017" )
+openai_client = OpenAI(api_key="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")
 db = client.clickRepellent 
 train_data = db.train
 test_data = db.test
@@ -31,6 +34,9 @@ print("Number of documents in speaker_images collection:", speaker_images_collec
 speakers = db.speakers
 subject_charts = db.subject_charts
 figures = db.political_figures
+politifact_statements = db.politifact_articles
+
+
 
 
 # Initialize GridFS
@@ -91,9 +97,26 @@ def admin_required(func):
         
     return admin_required_wrapper
 
-@app.route("/api/v1.0/articles", methods=["GET"])
+""" @app.route("/api/v1.0/articles", methods=["GET"])
 def show_all_articles():
     page_num, page_size = 1, 10
+    if request.args.get("pn"):
+        page_num = int(request.args.get('pn'))
+    if request.args.get("ps"):
+        page_size = int(request.args.get('ps'))
+    page_start = (page_size * (page_num - 1))
+    
+    data_to_return = []
+    for article in valid_data.find().skip(page_start).limit(page_size):
+        article["_id"] = str(article["_id"])
+        
+        data_to_return.append(article)
+    
+    return make_response( jsonify( data_to_return ), 200 ) """
+    
+@app.route("/api/v1.0/articles", methods=["GET"])
+def show_all_articles():
+    page_num, page_size = 1, 12
     if request.args.get("pn"):
         page_num = int(request.args.get('pn'))
     if request.args.get("ps"):
@@ -822,6 +845,67 @@ def search_figure_by_name():
         return jsonify(figure), 200
     else:
         return make_response(jsonify({"error": "Figure not found"}), 404)
+
+# Load user data from a JSON file
+with open('user.json', 'r') as file:
+    user_data = json.load(file)
+
+@app.route('/api/v1.0/ask', methods=['POST'])
+def ask_question():
+    # Retrieve JSON data from the request
+    request_data = request.json
+
+    # Extract user input and user's username
+    user_input = request_data.get('input')
+    username = request_data.get('username')
+
+    if user_input.lower() == 'exit':
+        return jsonify({'response': 'Conversation ended.'}), 200
+
+    # Find the thread ID for the user
+    active_user_thread_id = ""
+    for user in user_data:
+        if user['username'] == username:
+            active_user_thread_id = user['thread']
+            break
+
+    if not active_user_thread_id:
+        return jsonify({'error': 'User not found'}), 404
+
+    # Send user input to OpenAI
+    message = openai_client.beta.threads.messages.create(
+        thread_id=active_user_thread_id,
+        role="user",
+        content=user_input
+    )
+
+    # Create a run for the assistant to process the message
+    run = openai_client.beta.threads.runs.create(
+        thread_id=active_user_thread_id,
+        assistant_id="asst_1wOo58GyxTOJzzscQyFtH2De",
+        instructions=f"Please address the user as {username}. The user has a premium account."
+    )
+
+    # Wait for the run to complete
+    while True:
+        time.sleep(2)
+        run = openai_client.beta.threads.runs.retrieve(
+            thread_id=active_user_thread_id,
+            run_id=run.id
+        )
+        if run.status == 'completed':
+            break
+
+    # Retrieve messages from the assistant
+    messages = openai_client.beta.threads.messages.list(
+        thread_id=active_user_thread_id
+    )
+
+    # Get the latest message from the assistant
+    assistant_response = messages.data[0].content[0].text.value
+
+    return jsonify({'response': assistant_response}), 200
+
 
 if __name__ == "__main__":
     app.run( debug = True )
