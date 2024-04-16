@@ -15,6 +15,7 @@ import json
 from flask_cors import CORS
 import time
 from openai import OpenAI
+import uuid
 
 app = Flask(__name__)
 CORS(app)
@@ -862,15 +863,26 @@ def ask_question():
     if user_input.lower() == 'exit':
         return jsonify({'response': 'Conversation ended.'}), 200
 
-    # Find the thread ID for the user
-    active_user_thread_id = ""
-    for user in user_data:
-        if user['username'] == username:
-            active_user_thread_id = user['thread']
-            break
+    # Retrieve user data from the users collection
+    user = users.find_one({'username': username})
 
-    if not active_user_thread_id:
+    if not user:
         return jsonify({'error': 'User not found'}), 404
+
+    # Check if 'thread' field exists in the user document
+    active_user_thread_id = user.get('thread')
+
+    # If 'thread' field is missing or invalid, create a new thread
+    if not is_valid_thread(active_user_thread_id):
+        # Create a new thread for the user
+        active_user_thread_id = create_thread_for_user(username)
+
+        # Update the user document with the new thread ID
+        users.update_one({'username': username}, {'$set': {'thread': active_user_thread_id}})
+
+    # Check if the thread ID is valid after creation
+    if not is_valid_thread(active_user_thread_id):
+        return jsonify({'error': 'Failed to create a valid thread for the user.'}), 500
 
     # Send user input to OpenAI
     message = openai_client.beta.threads.messages.create(
@@ -906,6 +918,16 @@ def ask_question():
 
     return jsonify({'response': assistant_response}), 200
 
+def create_thread_for_user(username):
+    # Call the OpenAI API to create a new thread
+    response = openai_client.beta.threads.create()
+    # Extract the thread ID from the response
+    thread_id = response.id
+    return thread_id
+
+def is_valid_thread(thread_id):
+    # Check if the thread ID is a non-empty string
+    return isinstance(thread_id, str) and len(thread_id) > 0
 
 if __name__ == "__main__":
     app.run( debug = True )
